@@ -4,11 +4,11 @@ A full-stack collaborative notes application with JWT authentication, team RBAC,
 
 ## Tech Stack
 
-| Layer | Technologies |
-|-------|----------------|
-| Frontend | React 19, Vite, React Router, Zustand, TanStack Query, TailwindCSS, Socket.IO Client |
-| Backend | Node.js, Express, Sequelize, PostgreSQL, Redis, Socket.IO, JWT |
-| Infrastructure | Docker, Docker Compose |
+| Layer          | Technologies                                                                         |
+| -------------- | ------------------------------------------------------------------------------------ |
+| Frontend       | React 19, Vite, React Router, Zustand, TanStack Query, TailwindCSS, Socket.IO Client |
+| Backend        | Node.js, Express, Sequelize, PostgreSQL, Redis, Socket.IO, JWT                       |
+| Infrastructure | Docker, Docker Compose                                                               |
 
 ## Prerequisites
 
@@ -98,44 +98,44 @@ npm run dev:frontend
 
 ### Root (`noteapp/`)
 
-| Command | Description |
-|---------|-------------|
-| `npm run migrate` | Run Sequelize migrations |
-| `npm run migrate:down` | Rollback last migration |
-| `npm run seed` | Seed demo users, team, and notes |
-| `npm run dev:backend` | Start API with hot reload |
-| `npm run dev:frontend` | Start Vite dev server |
-| `npm run start:backend` | Start API (production mode) |
-| `npm run install:all` | Install backend + frontend deps |
+| Command                 | Description                      |
+| ----------------------- | -------------------------------- |
+| `npm run migrate`       | Run Sequelize migrations         |
+| `npm run migrate:down`  | Rollback last migration          |
+| `npm run seed`          | Seed demo users, team, and notes |
+| `npm run dev:backend`   | Start API with hot reload        |
+| `npm run dev:frontend`  | Start Vite dev server            |
+| `npm run start:backend` | Start API (production mode)      |
+| `npm run install:all`   | Install backend + frontend deps  |
 
 ### Backend (`backend/`)
 
-| Command | Description |
-|---------|-------------|
-| `npm run dev` | Start API with `--watch` |
-| `npm run start` | Start API |
-| `npm run migrate` | Apply migrations |
-| `npm run migrate:down` | Rollback one migration |
-| `npm run seed` | Seed database |
-| `npm test` | Run Jest tests |
+| Command                | Description              |
+| ---------------------- | ------------------------ |
+| `npm run dev`          | Start API with `--watch` |
+| `npm run start`        | Start API                |
+| `npm run migrate`      | Apply migrations         |
+| `npm run migrate:down` | Rollback one migration   |
+| `npm run seed`         | Seed database            |
+| `npm test`             | Run Jest tests           |
 
 ### Frontend (`frontend/`)
 
-| Command | Description |
-|---------|-------------|
-| `npm run dev` | Vite dev server (port 5173) |
-| `npm run build` | Production build |
-| `npm run preview` | Preview production build |
+| Command           | Description                 |
+| ----------------- | --------------------------- |
+| `npm run dev`     | Vite dev server (port 5173) |
+| `npm run build`   | Production build            |
+| `npm run preview` | Preview production build    |
 
 ## Demo Accounts
 
 After seeding, log in with:
 
-| Email | Password | Role |
-|-------|----------|------|
+| Email             | Password     | Role       |
+| ----------------- | ------------ | ---------- |
 | alice@noteapp.com | Password123! | Team owner |
-| bob@noteapp.com | Password123! | Editor |
-| carol@noteapp.com | Password123! | Viewer |
+| bob@noteapp.com   | Password123! | Editor     |
+| carol@noteapp.com | Password123! | Viewer     |
 
 Re-run `npm run seed` anytime to reset demo passwords.
 
@@ -145,12 +145,12 @@ Re-run `npm run seed` anytime to reset demo passwords.
 docker compose up --build
 ```
 
-| Service | URL |
-|---------|-----|
-| Frontend | http://localhost:5173 |
+| Service     | URL                       |
+| ----------- | ------------------------- |
+| Frontend    | http://localhost:5173     |
 | Backend API | http://localhost:3001/api |
-| PostgreSQL | localhost:5433 |
-| Redis | localhost:6379 |
+| PostgreSQL  | localhost:5433            |
+| Redis       | localhost:6379            |
 
 Run migrations inside the backend container after first start:
 
@@ -190,18 +190,18 @@ noteapp/
 
 See `backend/.env.example` for all options. Key variables:
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `PORT` | API port | `3001` |
-| `DB_HOST` | PostgreSQL host | `localhost` |
-| `DB_PORT` | PostgreSQL port | `5432` or `5433` (Docker) |
-| `DB_NAME` | Database name | `noteapp_db` |
-| `DB_USER` | Database user | — |
-| `DB_PASSWORD` | Database password | — |
-| `REDIS_URL` | Redis connection | `redis://localhost:6379` |
-| `JWT_ACCESS_SECRET` | JWT signing key | change in production |
-| `JWT_REFRESH_SECRET` | Refresh token key | change in production |
-| `CORS_ORIGIN` | Frontend URL | `http://localhost:5173` |
+| Variable             | Description       | Default                   |
+| -------------------- | ----------------- | ------------------------- |
+| `PORT`               | API port          | `3001`                    |
+| `DB_HOST`            | PostgreSQL host   | `localhost`               |
+| `DB_PORT`            | PostgreSQL port   | `5432` or `5433` (Docker) |
+| `DB_NAME`            | Database name     | `noteapp_db`              |
+| `DB_USER`            | Database user     | —                         |
+| `DB_PASSWORD`        | Database password | —                         |
+| `REDIS_URL`          | Redis connection  | `redis://localhost:6379`  |
+| `JWT_ACCESS_SECRET`  | JWT signing key   | change in production      |
+| `JWT_REFRESH_SECRET` | Refresh token key | change in production      |
+| `CORS_ORIGIN`        | Frontend URL      | `http://localhost:5173`   |
 
 ## Features
 
@@ -245,4 +245,5 @@ Swagger UI: [http://localhost:3001/api/docs](http://localhost:3001/api/docs)
 ## License
 
 MIT
+
 # Noteapp
