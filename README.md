@@ -127,16 +127,6 @@ npm run dev:frontend
 | `npm run build`   | Production build            |
 | `npm run preview` | Preview production build    |
 
-## Demo Accounts
-
-After seeding, log in with:
-
-| Email             | Password     | Role       |
-| ----------------- | ------------ | ---------- |
-| alice@noteapp.com | Password123! | Team owner |
-| bob@noteapp.com   | Password123! | Editor     |
-| carol@noteapp.com | Password123! | Viewer     |
-
 Re-run `npm run seed` anytime to reset demo passwords.
 
 ## Docker (full stack)
