@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { io } from 'socket.io-client';
+import { env } from '@/config/env';
 
 export const useSocketStore = create((set, get) => ({
   socket: null,
@@ -8,7 +9,7 @@ export const useSocketStore = create((set, get) => ({
     const existing = get().socket;
     if (existing?.connected) return existing;
 
-    const socket = io(import.meta.env.VITE_SOCKET_URL || 'http://localhost:3001', {
+    const socket = io(env.socketUrl, {
       auth: { token },
       transports: ['websocket', 'polling'],
       reconnection: true,

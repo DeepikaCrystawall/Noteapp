@@ -3,10 +3,11 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import { ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import AuthLayout from '@/components/layout/AuthLayout';
 import { useAuthStore } from '@/stores/authStore';
 import { useSocketStore } from '@/stores/socketStore';
 import { toast } from '@/hooks/use-toast';
@@ -43,36 +44,49 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-indigo-50 to-white">
-      <Card className="w-full max-w-md">
-        <CardHeader className="text-center">
-          <CardTitle className="text-2xl">Welcome back</CardTitle>
-          <CardDescription>Sign in to your NoteApp account</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input id="email" type="email" placeholder="you@example.com" {...register('email')} />
-              {errors.email && <p className="text-sm text-[var(--color-destructive)]">{errors.email.message}</p>}
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
-              <Input id="password" type="password" {...register('password')} />
-              {errors.password && <p className="text-sm text-[var(--color-destructive)]">{errors.password.message}</p>}
-            </div>
-            <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? 'Signing in...' : 'Sign in'}
-            </Button>
-          </form>
-          <div className="mt-4 text-center text-sm space-y-2">
-            <Link to="/forgot-password" className="text-[var(--color-primary)] hover:underline">Forgot password?</Link>
-            <p className="text-[var(--color-muted-foreground)]">
-              No account? <Link to="/register" className="text-[var(--color-primary)] hover:underline">Sign up</Link>
-            </p>
+    <AuthLayout
+      title="Welcome Back"
+      subtitle="Continue your collaborative journey and sync your ideas instantly."
+      footer={
+        <p className="text-sm text-[var(--color-on-surface-variant)] text-center lg:text-left">
+          Don&apos;t have an account?{' '}
+          <Link to="/register" className="text-[var(--color-primary)] font-semibold hover:underline">
+            Create an account
+          </Link>
+        </p>
+      }
+    >
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+        <div className="space-y-2">
+          <Label htmlFor="email" className="text-[var(--color-on-surface-variant)]">Work Email</Label>
+          <Input id="email" type="email" placeholder="name@company.com" {...register('email')} />
+          {errors.email && <p className="text-sm text-[var(--color-destructive)]">{errors.email.message}</p>}
+        </div>
+
+        <div className="space-y-2">
+          <div className="flex justify-between items-center">
+            <Label htmlFor="password" className="text-[var(--color-on-surface-variant)]">Password</Label>
+            <Link to="/forgot-password" className="text-xs font-medium text-[var(--color-primary)] hover:underline">
+              Forgot password?
+            </Link>
           </div>
-        </CardContent>
-      </Card>
-    </div>
+          <Input id="password" type="password" placeholder="••••••••" {...register('password')} />
+          {errors.password && <p className="text-sm text-[var(--color-destructive)]">{errors.password.message}</p>}
+        </div>
+
+        <Button
+          type="submit"
+          className="w-full h-12 rounded-lg shadow-lg shadow-[var(--color-primary)]/20 hover:shadow-[var(--color-primary)]/40 active:scale-[0.98] transition-all"
+          disabled={loading}
+        >
+          {loading ? 'Authenticating...' : (
+            <>
+              Sign In to Workspace
+              <ArrowRight className="h-4 w-4" />
+            </>
+          )}
+        </Button>
+      </form>
+    </AuthLayout>
   );
 }

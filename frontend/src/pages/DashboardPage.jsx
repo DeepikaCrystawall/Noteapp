@@ -1,88 +1,171 @@
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
-import { FileText, Star, Share2, Plus } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { FileText, Star, Share2, Users, MessageCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { formatDate } from '@/lib/utils';
+import PageHeader from '@/components/layout/PageHeader';
+import StatCard from '@/components/layout/StatCard';
+import NoteCard from '@/components/notes/NoteCard';
+import ActivityTimeline from '@/components/dashboard/ActivityTimeline';
+import { useAuthStore } from '@/stores/authStore';
+import { useSocketStore } from '@/stores/socketStore';
 import api from '@/services/api';
 
-function NoteList({ notes, empty }) {
-  if (!notes?.length) return <p className="text-sm text-[var(--color-muted-foreground)]">{empty}</p>;
+function DashboardSkeleton() {
   return (
-    <div className="space-y-2">
-      {notes.map((note) => (
-        <Link key={note.id} to={`/notes/${note.id}`} className="block p-3 rounded-md hover:bg-[var(--color-accent)] transition-colors">
-          <p className="font-medium truncate">{note.title}</p>
-          <p className="text-xs text-[var(--color-muted-foreground)]">{formatDate(note.updated_at)}</p>
-        </Link>
-      ))}
+    <div className="p-4 sm:p-6 lg:p-8 max-w-[1200px] mx-auto space-y-8">
+      <Skeleton className="h-10 w-64" />
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        {[1, 2, 3, 4].map((i) => <Skeleton key={i} className="h-32 rounded-xl" />)}
+      </div>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="lg:col-span-2 space-y-4">
+          <Skeleton className="h-6 w-32" />
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+            {[1, 2, 3].map((i) => <Skeleton key={i} className="h-40 rounded-xl" />)}
+          </div>
+        </div>
+        <Skeleton className="h-64 rounded-xl" />
+      </div>
     </div>
   );
 }
 
 export default function DashboardPage() {
+  const user = useAuthStore((s) => s.user);
+  const connected = useSocketStore((s) => s.connected);
+
   const { data, isLoading } = useQuery({
     queryKey: ['dashboard'],
     queryFn: async () => (await api.get('/notes/dashboard')).data.data,
   });
 
-  if (isLoading) {
-    return (
-      <div className="p-8 space-y-6">
-        <Skeleton className="h-8 w-48" />
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {[1, 2, 3].map((i) => <Skeleton key={i} className="h-32" />)}
-        </div>
-      </div>
-    );
-  }
+  const { data: teams = [] } = useQuery({
+    queryKey: ['teams'],
+    queryFn: async () => (await api.get('/teams')).data.data,
+  });
+
+  const { data: notificationsData } = useQuery({
+    queryKey: ['notifications', 'dashboard'],
+    queryFn: async () => (await api.get('/notifications', { params: { limit: 5 } })).data,
+  });
+
+  if (isLoading) return <DashboardSkeleton />;
+
+  const recentNotes = data?.recentNotes || [];
+  const sharedNotes = data?.sharedNotes || [];
+  const notifications = notificationsData?.data?.slice(0, 5) || [];
+
+  const firstName = user?.name?.split(' ')[0] || 'there';
 
   return (
-    <div className="p-8">
-      <div className="flex items-center justify-between mb-8">
-        <div>
-          <h1 className="text-3xl font-bold">Dashboard</h1>
-          <p className="text-[var(--color-muted-foreground)]">Your collaboration overview</p>
+    <div className="p-4 sm:p-6 lg:p-8">
+      <div className="max-w-[1200px] mx-auto">
+        <PageHeader
+          title={`Welcome back, ${firstName}`}
+          description="Here's what's happening across your workspace today."
+          className="mb-8"
+        />
+
+        {/* KPI grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
+          <StatCard
+            title="Total Notes"
+            value={data?.totalNotes ?? 0}
+            icon={FileText}
+            iconClassName="text-[var(--color-primary)] bg-[var(--color-primary-fixed)]"
+          />
+          <StatCard
+            title="Shared With You"
+            value={sharedNotes.length}
+            icon={Share2}
+            iconClassName="text-[var(--color-secondary)] bg-[#d3e4fe]"
+            badge={
+              sharedNotes.length > 0 ? (
+                <span className="text-xs font-bold text-green-700 px-2 py-1 bg-green-100 rounded-full">Active</span>
+              ) : null
+            }
+          />
+          <StatCard
+            title="Favorites"
+            value={data?.favoriteNotes?.length ?? 0}
+            icon={Star}
+            iconClassName="text-[#904900] bg-[#ffdcc5]"
+          />
+          <StatCard
+            title="Your Teams"
+            value={teams.length}
+            icon={Users}
+            iconClassName="text-[var(--color-primary)] bg-[var(--color-primary-fixed)]"
+            badge={
+              connected ? (
+                <span className="flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-[var(--color-primary)] animate-pulse" />
+                  <span className="text-xs font-bold text-[var(--color-primary)]">Live</span>
+                </span>
+              ) : (
+                <span className="text-xs font-bold text-[var(--color-on-surface-variant)] px-2 py-1 bg-[var(--color-surface-variant)] rounded-full">
+                  Offline
+                </span>
+              )
+            }
+          />
         </div>
-        <Link to="/notes/new">
-          <Button><Plus className="h-4 w-4 mr-2" /> New Note</Button>
-        </Link>
-      </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Total Notes</CardTitle>
-            <FileText className="h-4 w-4 text-[var(--color-muted-foreground)]" />
-          </CardHeader>
-          <CardContent><div className="text-2xl font-bold">{data?.totalNotes || 0}</div></CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Favorites</CardTitle>
-            <Star className="h-4 w-4 text-[var(--color-muted-foreground)]" />
-          </CardHeader>
-          <CardContent><div className="text-2xl font-bold">{data?.favoriteNotes?.length || 0}</div></CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Shared</CardTitle>
-            <Share2 className="h-4 w-4 text-[var(--color-muted-foreground)]" />
-          </CardHeader>
-          <CardContent><div className="text-2xl font-bold">{data?.sharedNotes?.length || 0}</div></CardContent>
-        </Card>
-      </div>
+        {/* Main content */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+          <div className="lg:col-span-2 space-y-6">
+            <div className="flex items-center justify-between">
+              <h3 className="text-xl font-semibold text-[var(--color-foreground)]">Recent Notes</h3>
+              <Link to="/notes" className="text-sm font-semibold text-[var(--color-primary)] hover:underline">
+                View all
+              </Link>
+            </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card>
-          <CardHeader><CardTitle>Recent Notes</CardTitle></CardHeader>
-          <CardContent><NoteList notes={data?.recentNotes} empty="No recent notes" /></CardContent>
-        </Card>
-        <Card>
-          <CardHeader><CardTitle>Shared With You</CardTitle></CardHeader>
-          <CardContent><NoteList notes={data?.sharedNotes} empty="No shared notes" /></CardContent>
-        </Card>
+            {recentNotes.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                {recentNotes.map((note) => (
+                  <NoteCard key={note.id} note={note} />
+                ))}
+              </div>
+            ) : (
+              <div className="glass-card rounded-xl border border-[var(--color-outline-variant)] p-12 text-center">
+                <p className="text-sm text-[var(--color-on-surface-variant)] mb-4">No recent notes yet</p>
+                <Link to="/notes/new">
+                  <Button>Create your first note</Button>
+                </Link>
+              </div>
+            )}
+
+            {/* CTA banner */}
+            <div className="relative overflow-hidden bg-[var(--color-primary)] p-8 rounded-2xl text-white flex flex-col md:flex-row items-center justify-between gap-6">
+              <div className="z-10">
+                <h3 className="text-2xl font-semibold mb-2">Collaborate in real-time</h3>
+                <p className="text-base opacity-90 max-w-md">
+                  Invite your team to work on notes together with live presence and instant sync.
+                </p>
+                <Link to="/teams">
+                  <Button className="mt-6 bg-white text-[var(--color-primary)] hover:bg-[var(--color-surface)] rounded-xl shadow-lg">
+                    Manage Teams
+                  </Button>
+                </Link>
+              </div>
+              <div className="relative w-32 h-32 sm:w-40 sm:h-40 flex-shrink-0">
+                <div className="absolute inset-0 bg-white/10 rounded-full animate-ping" />
+                <div className="absolute inset-4 bg-white/20 rounded-full animate-pulse" />
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <MessageCircle className="h-16 w-16 opacity-50 fill-white/30" />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Activity sidebar */}
+          <div className="space-y-4">
+            <h3 className="text-xl font-semibold text-[var(--color-foreground)]">Recent Activity</h3>
+            <ActivityTimeline notifications={notifications} />
+          </div>
+        </div>
       </div>
     </div>
   );

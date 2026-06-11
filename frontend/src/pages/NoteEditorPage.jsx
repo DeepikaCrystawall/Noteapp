@@ -1,13 +1,11 @@
 import { useEffect, useRef, useCallback, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, History, Settings2, Trash2 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
+import EditorToolbar from '@/components/notes/EditorToolbar';
 import NoteSidebar from '@/components/notes/NoteSidebar';
-import PresenceBar from '@/components/notes/PresenceBar';
 import CollaborativeTextarea from '@/components/notes/CollaborativeTextarea';
 import AuthorLegend from '@/components/notes/AuthorLegend';
 import { canWriteNote } from '@/lib/notePermissions';
@@ -21,7 +19,7 @@ import {
 import { useAuthStore } from '@/stores/authStore';
 import { useNoteStore } from '@/stores/noteStore';
 import { useSocketStore } from '@/stores/socketStore';
-import { debounce, throttle } from '@/lib/utils';
+import { debounce, throttle, cn } from '@/lib/utils';
 import { toast } from '@/hooks/use-toast';
 import api from '@/services/api';
 
@@ -42,6 +40,7 @@ export default function NoteEditorPage() {
   const [segments, setSegments] = useState([]);
   const [teamId, setTeamId] = useState('');
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [lastSaved, setLastSaved] = useState(null);
   const isRemoteUpdate = useRef(false);
   const typingTimeoutRef = useRef(null);
   const latestDraftRef = useRef({ title: '', content: '' });
@@ -79,6 +78,16 @@ export default function NoteEditorPage() {
     onError: (err) => toast({ title: 'Error', description: err.response?.data?.message, variant: 'destructive' }),
   });
 
+  const favoriteMutation = useMutation({
+    mutationFn: () => api.post(`/notes/${noteId}/${note?.is_favorite ? 'unfavorite' : 'favorite'}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['note', noteId] });
+      queryClient.invalidateQueries({ queryKey: ['notes'] });
+      toast({ title: note?.is_favorite ? 'Removed from favorites' : 'Added to favorites' });
+    },
+    onError: (err) => toast({ title: 'Error', description: err.response?.data?.message, variant: 'destructive' }),
+  });
+
   const isOwner = note?.userPermission === 'owner' || note?.owner_id === user?.id;
   const canWrite = isNew || canWriteNote(note?.userPermission);
   const isTeamNote = !isNew && !!note?.team_id;
@@ -91,7 +100,9 @@ export default function NoteEditorPage() {
   const persistNote = useCallback(
     debounce((data) => {
       if (isNew || !canWrite) return;
-      api.put(`/notes/${noteId}`, data, { headers: { 'X-Autosave': 'true' } }).catch(() => { });
+      api.put(`/notes/${noteId}`, data, { headers: { 'X-Autosave': 'true' } })
+        .then(() => setLastSaved(new Date()))
+        .catch(() => { });
     }, 5000),
     [noteId, isNew, canWrite]
   );
@@ -123,6 +134,7 @@ export default function NoteEditorPage() {
       setTitle(note.title);
       setContent(note.content);
       setTeamId(note.team_id || '');
+      setLastSaved(note.updated_at ? new Date(note.updated_at) : null);
       if (note.team_id) {
         const initial = createInitialSegments(note.content, note.owner_id, note.owner_name || 'Author');
         segmentsRef.current = initial;
@@ -228,112 +240,120 @@ export default function NoteEditorPage() {
   };
 
   if (!isNew && isLoading) {
-    return <div className="p-8"><Skeleton className="h-8 w-64 mb-4" /><Skeleton className="h-96" /></div>;
+    return (
+      <div className="p-6 lg:p-8 max-w-[800px] mx-auto">
+        <Skeleton className="h-10 w-64 mb-6" />
+        <Skeleton className="h-12 w-full mb-4" />
+        <Skeleton className="h-96 w-full rounded-xl" />
+      </div>
+    );
   }
 
   return (
-    <div className="h-full flex">
-      <div className="flex-1 flex flex-col min-w-0">
-        <div className="flex items-center justify-between p-4 border-b border-[var(--color-border)]">
-          <div className="flex items-center gap-3">
-            <Button variant="ghost" size="icon" onClick={() => navigate('/notes')}><ArrowLeft className="h-4 w-4" /></Button>
-            {!isNew && (
-              <PresenceBar
-                socketConnected={socketConnected}
-                collaborators={collaborators}
-                typingUsers={typingUsers}
+    <div className="h-full flex flex-col overflow-hidden bg-[var(--color-surface)]">
+      <EditorToolbar
+        isNew={isNew}
+        noteId={noteId}
+        title={title}
+        lastSaved={lastSaved}
+        socketConnected={socketConnected}
+        collaborators={collaborators}
+        typingUsers={typingUsers}
+        currentUserId={user.id}
+        isFavorite={note?.is_favorite}
+        isOwner={isOwner}
+        canWrite={canWrite}
+        onShare={() => setSidebarOpen(true)}
+        onFavorite={() => favoriteMutation.mutate()}
+        onDelete={handleDelete}
+        onCreate={handleCreate}
+        isCreating={saveMutation.isPending}
+        isDeleting={deleteMutation.isPending}
+        isFavoriting={favoriteMutation.isPending}
+      />
+
+      <div className="flex flex-1 min-h-0 overflow-hidden">
+        <div
+          className={cn(
+            'flex-1 flex flex-col min-w-0 overflow-y-auto custom-scrollbar transition-[margin] duration-300',
+            sidebarOpen && 'lg:mr-80'
+          )}
+        >
+          <div className="max-w-[800px] mx-auto w-full px-4 sm:px-6 lg:px-8 py-6 lg:py-8 pb-24 md:pb-8">
+            {isNew && (
+              <div className="mb-8 p-5 rounded-xl border border-[var(--color-outline-variant)] bg-[var(--color-surface-container-low)]">
+                <Label htmlFor="team" className="text-sm font-semibold mb-2 block">
+                  Team (optional)
+                </Label>
+                <select
+                  id="team"
+                  value={teamId}
+                  onChange={(e) => setTeamId(e.target.value)}
+                  className="w-full max-w-sm h-10 rounded-lg border border-[var(--color-outline-variant)] bg-white px-3 text-sm"
+                >
+                  <option value="">Personal note (no team)</option>
+                  {teams.map((t) => (
+                    <option key={t.id} value={t.id}>{t.name}</option>
+                  ))}
+                </select>
+                <p className="text-xs text-[var(--color-on-surface-variant)] mt-2">
+                  Team notes are visible to all members of the selected team.
+                </p>
+              </div>
+            )}
+
+            {!isNew && !canWrite && (
+              <div className="mb-6 px-4 py-3 rounded-xl bg-[#ffdcc5]/30 border border-[#904900]/20 text-[#703700] text-sm">
+                View only — you can read this note but not edit it.
+              </div>
+            )}
+
+            {isTeamNote && (
+              <AuthorLegend
+                authors={getSegmentAuthors(segments)}
+                modifiers={getSegmentModifiers(segments)}
                 currentUserId={user.id}
               />
             )}
-          </div>
-          <div className="flex gap-2">
-            {isNew ? (
-              <Button onClick={handleCreate} disabled={saveMutation.isPending}>Create Note</Button>
+
+            {canWrite ? (
+              <Input
+                value={title}
+                onChange={handleTitleChange}
+                placeholder="Untitled"
+                className="text-3xl sm:text-4xl font-bold border-none shadow-none focus-visible:ring-0 px-0 mb-6 h-auto bg-transparent tracking-tight"
+              />
             ) : (
-              <>
-                <Button variant="outline" onClick={() => setSidebarOpen((o) => !o)}>
-                  <Settings2 className="h-4 w-4 mr-2" /> {canWrite ? 'Share & Tags' : 'Tags'}
-                </Button>
-                <Button variant="outline" onClick={() => navigate(`/notes/${noteId}/history`)}>
-                  <History className="h-4 w-4 mr-2" /> History
-                </Button>
-                {isOwner && (
-                  <Button variant="destructive" onClick={handleDelete} disabled={deleteMutation.isPending}>
-                    <Trash2 className="h-4 w-4 mr-2" /> Delete
-                  </Button>
-                )}
-              </>
+              <h1 className="text-3xl sm:text-4xl font-bold mb-6 tracking-tight">
+                {title || 'Untitled'}
+              </h1>
             )}
+
+            <div className="h-px bg-[var(--color-outline-variant)]/50 mb-8" />
+
+            <CollaborativeTextarea
+              value={content}
+              segments={segments}
+              coloredByUser={isTeamNote}
+              onChange={handleContentChange}
+              onCursorChange={handleCursorChange}
+              remoteCursors={cursors}
+              currentUserId={user.id}
+              placeholder={canWrite ? 'Start writing...' : ''}
+              readOnly={!canWrite}
+            />
           </div>
         </div>
 
-        <div className="flex-1 p-8 max-w-4xl mx-auto w-full">
-          {isNew && (
-            <div className="mb-6 p-4 rounded-lg border border-[var(--color-border)] bg-[var(--color-muted)]/30">
-              <Label htmlFor="team" className="text-sm font-medium mb-2 block">Team (optional)</Label>
-              <select
-                id="team"
-                value={teamId}
-                onChange={(e) => setTeamId(e.target.value)}
-                className="w-full max-w-sm h-10 rounded-md border border-[var(--color-border)] bg-[var(--color-background)] px-3 text-sm"
-              >
-                <option value="">Personal note (no team)</option>
-                {teams.map((t) => (
-                  <option key={t.id} value={t.id}>{t.name}</option>
-                ))}
-              </select>
-              <p className="text-xs text-[var(--color-muted-foreground)] mt-2">
-                Team notes are visible to all members of the selected team.
-              </p>
-            </div>
-          )}
-
-          {!isNew && !canWrite && (
-            <div className="mb-4 px-3 py-2 rounded-md bg-amber-50 border border-amber-200 text-amber-900 text-sm">
-              View only — you can read this note but not edit it (team viewer or read-only access).
-            </div>
-          )}
-
-          {isTeamNote && (
-            <AuthorLegend
-              authors={getSegmentAuthors(segments)}
-              modifiers={getSegmentModifiers(segments)}
-              currentUserId={user.id}
-            />
-          )}
-
-          {canWrite ? (
-            <Input
-              value={title}
-              onChange={handleTitleChange}
-              placeholder="Untitled"
-              className="text-3xl font-bold border-none shadow-none focus-visible:ring-0 px-0 mb-4 h-auto"
-            />
-          ) : (
-            <h1 className="text-3xl font-bold mb-4 px-0">{title || 'Untitled'}</h1>
-          )}
-          <CollaborativeTextarea
-            value={content}
-            segments={segments}
-            coloredByUser={isTeamNote}
-            onChange={handleContentChange}
-            onCursorChange={handleCursorChange}
-            remoteCursors={cursors}
-            currentUserId={user.id}
-            placeholder={canWrite ? 'Start writing...' : ''}
-            readOnly={!canWrite}
+        {!isNew && sidebarOpen && (
+          <NoteSidebar
+            noteId={noteId}
+            note={note}
+            teamId={note?.team_id}
+            onClose={() => setSidebarOpen(false)}
           />
-        </div>
+        )}
       </div>
-
-      {!isNew && sidebarOpen && (
-        <NoteSidebar
-          noteId={noteId}
-          note={note}
-          teamId={note?.team_id}
-          onClose={() => setSidebarOpen(false)}
-        />
-      )}
     </div>
   );
 }

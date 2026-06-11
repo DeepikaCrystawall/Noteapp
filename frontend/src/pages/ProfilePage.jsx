@@ -10,6 +10,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useAuthStore } from '@/stores/authStore';
 import { toast } from '@/hooks/use-toast';
 import api from '@/services/api';
+import { resolveAssetUrl } from '@/config/env';
 
 const profileSchema = z.object({
   name: z.string().min(2),
@@ -77,7 +78,7 @@ export default function ProfilePage() {
         <CardHeader><CardTitle>Avatar</CardTitle></CardHeader>
         <CardContent className="flex items-center gap-4">
           <Avatar className="h-20 w-20">
-            <AvatarImage src={user?.avatar_url} />
+            <AvatarImage src={resolveAssetUrl(user?.avatar_url)} />
             <AvatarFallback className="text-2xl">{user?.name?.[0]}</AvatarFallback>
           </Avatar>
           <Input type="file" accept="image/*" onChange={onAvatarChange} className="max-w-xs" />

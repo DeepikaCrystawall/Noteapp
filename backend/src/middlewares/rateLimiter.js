@@ -13,7 +13,7 @@ const createStore = (prefix) => {
 };
 
 const shouldSkipRateLimit = (req) => {
-  if (config.env !== 'production') return true;
+  if (!config.rateLimit.enabled) return true;
   if (req.get('x-autosave') === 'true') return true;
   return false;
 };
@@ -33,5 +33,10 @@ export const apiRateLimiter = rateLimit(
 );
 
 export const authRateLimiter = rateLimit(
-  rateLimitOptions(15 * 60 * 1000, 20, 'rl:auth:', 'Too many authentication attempts')
+  rateLimitOptions(
+    config.rateLimit.authWindowMs,
+    config.rateLimit.authMax,
+    'rl:auth:',
+    'Too many authentication attempts'
+  )
 );
