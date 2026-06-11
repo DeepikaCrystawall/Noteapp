@@ -7,6 +7,7 @@ import swaggerUi from 'swagger-ui-express';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import config from './config/index.js';
+import { createCorsOriginCallback } from './utils/corsOrigins.js';
 import routes from './routes/index.js';
 import { requestLogger } from './middlewares/requestLogger.js';
 import { apiRateLimiter } from './middlewares/rateLimiter.js';
@@ -25,10 +26,10 @@ app.use(helmet({
 }));
 
 app.use(cors({
-  origin: config.cors.origin,
+  origin: createCorsOriginCallback(config.cors.origins),
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Autosave'],
 }));
 
 app.use(compression());

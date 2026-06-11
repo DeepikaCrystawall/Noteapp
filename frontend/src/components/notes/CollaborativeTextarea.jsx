@@ -3,7 +3,7 @@ import { throttle } from '@/lib/utils';
 import { getUserColor } from '@/lib/userColors';
 
 const TEXTAREA_CLASS =
-  'w-full flex-1 min-h-[60vh] resize-none border-none outline-none text-base leading-relaxed p-0 m-0 bg-transparent';
+  'w-full flex-1 min-h-[50vh] resize-none border-none outline-none text-lg leading-relaxed p-0 m-0 bg-transparent text-[var(--color-foreground)] placeholder:text-[var(--color-on-surface-variant)]/60';
 
 function measureCaret(textarea, position) {
   const style = window.getComputedStyle(textarea);
@@ -61,11 +61,19 @@ function RemoteCaret({ textarea, position, name, userId }) {
 
   return (
     <div
-      className="absolute pointer-events-none"
+      className="absolute pointer-events-none z-20"
       style={{ top: coords.top, left: coords.left, height: coords.height }}
       title={name}
     >
-      <div className="w-0.5 h-full" style={{ backgroundColor: color.cursor }} />
+      {name && (
+        <span
+          className="absolute -top-5 left-0 text-[10px] px-1.5 py-0.5 rounded text-white font-semibold whitespace-nowrap"
+          style={{ backgroundColor: color.cursor }}
+        >
+          {name}
+        </span>
+      )}
+      <div className="w-0.5 h-full animate-pulse" style={{ backgroundColor: color.cursor }} />
     </div>
   );
 }

@@ -1,6 +1,6 @@
-import { Users } from 'lucide-react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { getUserColor } from '@/lib/userColors';
+import { cn } from '@/lib/utils';
 
 function TypingChip({ user }) {
   const color = getUserColor(user.userId);
@@ -20,38 +20,63 @@ export default function PresenceBar({
   collaborators,
   typingUsers,
   currentUserId,
+  compact = false,
+  className,
 }) {
   const othersTyping = typingUsers.filter((u) => u.userId !== currentUserId);
+  const visibleCollaborators = collaborators.slice(0, compact ? 3 : 5);
+  const overflow = collaborators.length - visibleCollaborators.length;
 
   return (
-    <div className="flex items-center gap-2 flex-wrap">
-      {socketConnected && (
+    <div className={cn('flex items-center gap-2 flex-wrap min-w-0', className)}>
+      {socketConnected && compact && (
+        <span className="inline-flex items-center gap-1 text-xs text-[var(--color-primary)] shrink-0">
+          <span className="h-2 w-2 rounded-full bg-[var(--color-primary)] animate-pulse" />
+          Live
+        </span>
+      )}
+
+      {collaborators.length > 0 && (
+        <div className="flex items-center -space-x-2 shrink-0">
+          {visibleCollaborators.map((c) => {
+            const color = getUserColor(c.id);
+            return (
+              <Avatar
+                key={c.id}
+                className="h-6 w-6 border-2 border-[var(--color-surface)]"
+                style={{ boxShadow: `0 0 0 1px ${color.ring}` }}
+                title={c.name}
+              >
+                <AvatarFallback
+                  className="text-[10px] font-bold"
+                  style={{ backgroundColor: color.bg, color: color.text }}
+                >
+                  {c.name?.[0]?.toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+            );
+          })}
+          {overflow > 0 && (
+            <div className="w-6 h-6 rounded-full bg-[var(--color-secondary-container)] text-[#54647a] flex items-center justify-center text-[10px] font-bold border-2 border-[var(--color-surface)]">
+              +{overflow}
+            </div>
+          )}
+        </div>
+      )}
+
+      {!compact && socketConnected && (
         <span className="inline-flex items-center gap-1 text-xs text-emerald-600">
           <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
           Live
         </span>
       )}
-      <Users className="h-4 w-4 text-[var(--color-muted-foreground)]" />
-      {collaborators.map((c) => {
-        const color = getUserColor(c.id);
-        return (
-          <Avatar
-            key={c.id}
-            className="h-6 w-6 -ml-1 border-2"
-            style={{ borderColor: color.ring }}
-            title={`${c.name} · ${color.name}`}
-          >
-            <AvatarFallback className="text-xs" style={{ backgroundColor: color.bg, color: color.text }}>
-              {c.name?.[0]}
-            </AvatarFallback>
-          </Avatar>
-        );
-      })}
-      {collaborators.length > 0 && (
-        <span className="text-xs text-[var(--color-muted-foreground)]">
+
+      {!compact && collaborators.length > 0 && (
+        <span className="text-xs text-[var(--color-on-surface-variant)]">
           {collaborators.length + 1} viewing
         </span>
       )}
+
       {othersTyping.map((u) => (
         <TypingChip key={u.userId} user={u} />
       ))}

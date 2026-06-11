@@ -1,7 +1,8 @@
 import { Server } from 'socket.io';
+import config from '../config/index.js';
 import { verifyAccessToken } from '../utils/jwt.js';
 import logger from '../config/logger.js';
-import { redisSub } from '../config/redis.js';
+import { isRedisReady, redisSub } from '../config/redis.js';
 import { PUBSUB_CHANNELS } from '../events/channels.js';
 import noteHandlers from './note.handlers.js';
 import presenceHandlers from './presence.handlers.js';
@@ -11,7 +12,7 @@ const activeUsers = new Map();
 export const initializeSocket = (httpServer) => {
   const io = new Server(httpServer, {
     cors: {
-      origin: process.env.CORS_ORIGIN || 'http://localhost:5173',
+      origin: config.cors.origins,
       credentials: true,
     },
     transports: ['websocket', 'polling'],
@@ -59,6 +60,11 @@ export const initializeSocket = (httpServer) => {
 };
 
 const setupRedisSubscriber = (io) => {
+  if (!isRedisReady()) {
+    logger.warn('Redis pub/sub disabled — real-time events are local to this server only');
+    return;
+  }
+
   redisSub.subscribe(PUBSUB_CHANNELS.SOCKET_BROADCAST, PUBSUB_CHANNELS.NOTIFICATION);
 
   redisSub.on('message', (channel, message) => {

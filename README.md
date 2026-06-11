@@ -232,8 +232,22 @@ Swagger UI: [http://localhost:3001/api/docs](http://localhost:3001/api/docs)
 
 - In development the server continues without Redis; start Redis for caching and pub/sub: `docker compose up redis -d`
 
+## Stitch design reference (noteapp only)
+
+Google Stitch is configured **only for this repo**, not globally:
+
+- MCP: `.cursor/mcp.json` (requires `GOOGLE_STITCH_API_KEY` in your environment)
+- Screen manifest: `design/stitch/project.json` (CollabNotes project `11679218732468739468`)
+
+Download HTML + screenshots locally:
+
+```powershell
+$env:GOOGLE_STITCH_API_KEY = "your-key"
+npm run fetch:stitch
+```
+
+Assets land in `design/stitch/screens/` (gitignored). Reload the Cursor window after changing MCP config.
+
 ## License
 
 MIT
-
-# Noteapp

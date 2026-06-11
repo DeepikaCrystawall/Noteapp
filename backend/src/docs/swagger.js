@@ -9,7 +9,7 @@ const options = {
       version: '1.0.0',
       description: 'Real-Time Team Collaboration Notes Platform API',
     },
-    servers: [{ url: `http://localhost:${config.port}/api`, description: 'Development' }],
+    servers: [{ url: config.apiUrl, description: config.env }],
     components: {
       securitySchemes: {
         bearerAuth: {

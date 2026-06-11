@@ -1,19 +1,53 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Share2, Tag, X, Plus } from 'lucide-react';
+import { Share2, Tag, X, Plus, Link2, Lock } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { toast } from '@/hooks/use-toast';
 import api from '@/services/api';
 import { canWriteNote } from '@/lib/notePermissions';
 
-export default function NoteSidebar({ noteId, note, teamId, onClose }) {
+const PERMISSION_LABELS = {
+  read: 'Viewer',
+  write: 'Editor',
+  owner: 'Owner',
+};
+
+function PermissionRow({ person }) {
+  return (
+    <div className="flex items-center justify-between p-4 hover:bg-[var(--color-surface-container-low)] transition-colors">
+      <div className="flex items-center gap-3 min-w-0">
+        <Avatar className="h-10 w-10 shrink-0">
+          <AvatarFallback className="text-sm bg-[var(--color-primary-container)] text-white">
+            {(person.name || person.email)?.[0]?.toUpperCase()}
+          </AvatarFallback>
+        </Avatar>
+        <div className="min-w-0">
+          <p className="text-sm font-semibold text-[var(--color-foreground)] truncate">
+            {person.name || person.email}
+          </p>
+          {person.email && person.name && (
+            <p className="text-sm text-[var(--color-on-surface-variant)] truncate">{person.email}</p>
+          )}
+        </div>
+      </div>
+      <span className="text-sm font-semibold text-[var(--color-on-surface-variant)] capitalize shrink-0 ml-2">
+        {PERMISSION_LABELS[person.permission] || person.permission}
+      </span>
+    </div>
+  );
+}
+
+export default function NoteSidebar({ noteId, note, teamId, onClose, className }) {
   const queryClient = useQueryClient();
   const [shareEmail, setShareEmail] = useState('');
   const [sharePermission, setSharePermission] = useState('read');
   const [newTagName, setNewTagName] = useState('');
-  const [newTagColor, setNewTagColor] = useState('#6366f1');
+  const [newTagColor, setNewTagColor] = useState('#4648d4');
+  const [activeTab, setActiveTab] = useState('share');
 
   const { data: allTags = [] } = useQuery({
     queryKey: ['tags', teamId],
@@ -22,6 +56,8 @@ export default function NoteSidebar({ noteId, note, teamId, onClose }) {
 
   const noteTags = note?.tags || [];
   const permissions = note?.permissions || [];
+  const isOwner = note?.userPermission === 'owner';
+  const canWrite = canWriteNote(note?.userPermission);
 
   const shareMutation = useMutation({
     mutationFn: (body) => api.post(`/notes/${noteId}/share`, body),
@@ -58,128 +94,232 @@ export default function NoteSidebar({ noteId, note, teamId, onClose }) {
     },
   });
 
-  const isOwner = note?.userPermission === 'owner';
-  const canWrite = canWriteNote(note?.userPermission);
+  const handleCopyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(`${window.location.origin}/notes/${noteId}`);
+      toast({ title: 'Link copied' });
+    } catch {
+      toast({ title: 'Could not copy link', variant: 'destructive' });
+    }
+  };
 
   return (
-    <aside className="w-80 border-l border-[var(--color-border)] bg-[var(--color-card)] p-4 overflow-y-auto flex flex-col gap-6">
-      <div className="flex items-center justify-between">
-        <h3 className="font-semibold">Note settings</h3>
-        <Button variant="ghost" size="icon" onClick={onClose}><X className="h-4 w-4" /></Button>
-      </div>
+    <>
+      {/* Mobile backdrop */}
+      <div
+        className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm lg:hidden"
+        onClick={onClose}
+        aria-hidden
+      />
 
-      <section>
-        <div className="flex items-center gap-2 mb-3">
-          <Tag className="h-4 w-4" />
-          <h4 className="font-medium text-sm">Tags</h4>
+      <aside
+        className={cn(
+          'fixed z-50 flex flex-col bg-[var(--color-surface-container-low)] border-[var(--color-outline-variant)]',
+          'inset-0 lg:inset-auto lg:top-14 lg:right-0 lg:bottom-0 lg:w-80 lg:border-l',
+          className
+        )}
+      >
+        {/* Header */}
+        <div className="px-6 py-5 flex items-start justify-between border-b border-[var(--color-outline-variant)] shrink-0">
+          <div>
+            <h2 className="text-lg font-semibold text-[var(--color-foreground)]">Share Note</h2>
+            <p className="text-sm text-[var(--color-on-surface-variant)] mt-0.5 line-clamp-1">
+              {note?.title || 'Untitled'}
+            </p>
+          </div>
+          <Button variant="ghost" size="icon" onClick={onClose} className="shrink-0 rounded-full">
+            <X className="h-4 w-4" />
+          </Button>
         </div>
-        <div className="flex flex-wrap gap-2 mb-3">
-          {noteTags.map((t) => (
-            <span
-              key={t.id}
-              className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full"
-              style={{ backgroundColor: t.color + '25', color: t.color }}
-            >
-              {t.name}
-              {canWrite && (
-                <button type="button" onClick={() => removeTagMutation.mutate(t.id)} className="hover:opacity-70">×</button>
-              )}
-            </span>
-          ))}
-          {noteTags.length === 0 && <p className="text-xs text-[var(--color-muted-foreground)]">No tags assigned</p>}
+
+        {/* Tabs */}
+        <div className="flex border-b border-[var(--color-outline-variant)] h-12 shrink-0">
+          <button
+            type="button"
+            onClick={() => setActiveTab('share')}
+            className={cn(
+              'flex-1 text-sm font-semibold flex items-center justify-center gap-1.5 transition-colors',
+              activeTab === 'share'
+                ? 'border-b-2 border-[var(--color-primary)] text-[var(--color-primary)]'
+                : 'text-[var(--color-on-surface-variant)] hover:bg-[var(--color-surface-variant)]'
+            )}
+          >
+            <Share2 className="h-4 w-4" />
+            Share
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('tags')}
+            className={cn(
+              'flex-1 text-sm font-semibold flex items-center justify-center gap-1.5 transition-colors',
+              activeTab === 'tags'
+                ? 'border-b-2 border-[var(--color-primary)] text-[var(--color-primary)]'
+                : 'text-[var(--color-on-surface-variant)] hover:bg-[var(--color-surface-variant)]'
+            )}
+          >
+            <Tag className="h-4 w-4" />
+            Tags
+          </button>
         </div>
-        {canWrite && (
-          <>
+
+        <div className="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-6">
+          {activeTab === 'share' && isOwner && (
             <div className="space-y-2">
-              <Label className="text-xs">Add existing tag</Label>
-              <div className="flex flex-wrap gap-1">
-                {allTags.filter((t) => !noteTags.some((nt) => nt.id === t.id)).map((t) => (
-                  <button
-                    key={t.id}
-                    type="button"
-                    onClick={() => assignTagMutation.mutate(t.id)}
-                    className="text-xs px-2 py-1 rounded-full border hover:bg-[var(--color-accent)]"
-                    style={{ borderColor: t.color, color: t.color }}
-                  >
-                    + {t.name}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div className="mt-3 space-y-2">
-              <Label className="text-xs">Create new tag</Label>
-              <div className="flex gap-2">
+              <Label className="text-sm font-semibold text-[var(--color-on-surface-variant)]">
+                Invite by email
+              </Label>
+              <div className="flex flex-col sm:flex-row gap-2">
                 <Input
-                  placeholder="Tag name"
-                  value={newTagName}
-                  onChange={(e) => setNewTagName(e.target.value)}
-                  className="h-8 text-sm"
+                  placeholder="name@company.com"
+                  type="email"
+                  value={shareEmail}
+                  onChange={(e) => setShareEmail(e.target.value)}
+                  className="flex-1"
                 />
-                <input
-                  type="color"
-                  value={newTagColor}
-                  onChange={(e) => setNewTagColor(e.target.value)}
-                  className="h-8 w-10 rounded border cursor-pointer"
-                />
+                <select
+                  value={sharePermission}
+                  onChange={(e) => setSharePermission(e.target.value)}
+                  className="h-10 rounded-lg border border-[var(--color-outline-variant)] bg-[var(--color-surface-container-low)] px-3 text-sm font-semibold"
+                >
+                  <option value="write">Editor</option>
+                  <option value="read">Viewer</option>
+                  <option value="owner">Owner</option>
+                </select>
               </div>
               <Button
-                size="sm"
-                variant="outline"
-                className="w-full"
-                disabled={!newTagName.trim()}
-                onClick={() => createTagMutation.mutate({ name: newTagName.trim(), color: newTagColor, teamId: teamId || null })}
+                className="w-full rounded-lg"
+                disabled={!shareEmail.trim() || shareMutation.isPending}
+                onClick={() => shareMutation.mutate({ email: shareEmail.trim(), permission: sharePermission })}
               >
-                <Plus className="h-3 w-3 mr-1" /> Create tag
+                Invite
               </Button>
             </div>
-          </>
-        )}
-      </section>
-
-      {isOwner && (
-        <section>
-          <div className="flex items-center gap-2 mb-3">
-            <Share2 className="h-4 w-4" />
-            <h4 className="font-medium text-sm">Share</h4>
-          </div>
-          {permissions.length > 0 && (
-            <ul className="space-y-2 mb-3">
-              {permissions.map((p) => (
-                <li key={p.id} className="text-xs flex justify-between p-2 rounded bg-[var(--color-muted)]">
-                  <span>{p.name || p.email}</span>
-                  <span className="capitalize text-[var(--color-muted-foreground)]">{p.permission}</span>
-                </li>
-              ))}
-            </ul>
           )}
-          <div className="space-y-2">
-            <Input
-              placeholder="user@email.com"
-              type="email"
-              value={shareEmail}
-              onChange={(e) => setShareEmail(e.target.value)}
-              className="h-8 text-sm"
-            />
-            <select
-              value={sharePermission}
-              onChange={(e) => setSharePermission(e.target.value)}
-              className="w-full h-8 rounded-md border px-2 text-sm"
-            >
-              <option value="read">View only</option>
-              <option value="write">Can edit</option>
-              <option value="owner">Owner</option>
-            </select>
-            <Button
-              size="sm"
-              className="w-full"
-              disabled={!shareEmail.trim() || shareMutation.isPending}
-              onClick={() => shareMutation.mutate({ email: shareEmail.trim(), permission: sharePermission })}
-            >
-              Share note
+
+          {activeTab === 'share' && (
+            <div className="space-y-2">
+              <h3 className="text-sm font-semibold text-[var(--color-on-surface-variant)]">
+                People with access
+              </h3>
+              <div className="border border-[var(--color-outline-variant)] rounded-xl overflow-hidden bg-white divide-y divide-[var(--color-outline-variant)]">
+                {permissions.length > 0 ? (
+                  permissions.map((p) => <PermissionRow key={p.id} person={p} />)
+                ) : (
+                  <p className="p-4 text-sm text-[var(--color-on-surface-variant)]">
+                    Only you have access to this note.
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'tags' && (
+            <section>
+              <div className="flex flex-wrap gap-2 mb-4">
+                {noteTags.map((t) => (
+                  <span
+                    key={t.id}
+                    className="inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-full font-medium"
+                    style={{ backgroundColor: `${t.color}25`, color: t.color }}
+                  >
+                    {t.name}
+                    {canWrite && (
+                      <button
+                        type="button"
+                        onClick={() => removeTagMutation.mutate(t.id)}
+                        className="hover:opacity-70 ml-0.5"
+                      >
+                        ×
+                      </button>
+                    )}
+                  </span>
+                ))}
+                {noteTags.length === 0 && (
+                  <p className="text-sm text-[var(--color-on-surface-variant)]">No tags assigned</p>
+                )}
+              </div>
+
+              {canWrite && (
+                <>
+                  <div className="space-y-2 mb-4">
+                    <Label className="text-xs font-semibold text-[var(--color-on-surface-variant)]">
+                      Add existing tag
+                    </Label>
+                    <div className="flex flex-wrap gap-1.5">
+                      {allTags.filter((t) => !noteTags.some((nt) => nt.id === t.id)).map((t) => (
+                        <button
+                          key={t.id}
+                          type="button"
+                          onClick={() => assignTagMutation.mutate(t.id)}
+                          className="text-xs px-2.5 py-1 rounded-full border hover:bg-[var(--color-surface-container-high)] transition-colors"
+                          style={{ borderColor: t.color, color: t.color }}
+                        >
+                          + {t.name}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-xs font-semibold text-[var(--color-on-surface-variant)]">
+                      Create new tag
+                    </Label>
+                    <div className="flex gap-2">
+                      <Input
+                        placeholder="Tag name"
+                        value={newTagName}
+                        onChange={(e) => setNewTagName(e.target.value)}
+                        className="h-9 text-sm"
+                      />
+                      <input
+                        type="color"
+                        value={newTagColor}
+                        onChange={(e) => setNewTagColor(e.target.value)}
+                        className="h-9 w-10 rounded-lg border border-[var(--color-outline-variant)] cursor-pointer"
+                      />
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="w-full rounded-lg"
+                      disabled={!newTagName.trim()}
+                      onClick={() => createTagMutation.mutate({
+                        name: newTagName.trim(),
+                        color: newTagColor,
+                        teamId: teamId || null,
+                      })}
+                    >
+                      <Plus className="h-3 w-3 mr-1" /> Create tag
+                    </Button>
+                  </div>
+                </>
+              )}
+            </section>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="px-6 py-4 bg-[var(--color-surface-container)] border-t border-[var(--color-outline-variant)] flex items-center justify-between gap-3 shrink-0">
+          <div className="flex items-center gap-2 min-w-0">
+            <Lock className="h-4 w-4 text-[var(--color-primary)] shrink-0" />
+            <div className="min-w-0">
+              <p className="text-xs font-semibold text-[var(--color-foreground)]">Restricted</p>
+              <p className="text-[10px] text-[var(--color-on-surface-variant)] truncate">
+                Only people added can open
+              </p>
+            </div>
+          </div>
+          <div className="flex gap-2 shrink-0">
+            <Button variant="outline" size="sm" className="rounded-lg gap-1.5" onClick={handleCopyLink}>
+              <Link2 className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Copy Link</span>
+            </Button>
+            <Button size="sm" className="rounded-lg" onClick={onClose}>
+              Done
             </Button>
           </div>
-        </section>
-      )}
-    </aside>
+        </div>
+      </aside>
+    </>
   );
 }

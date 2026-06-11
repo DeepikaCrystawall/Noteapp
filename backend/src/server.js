@@ -29,10 +29,20 @@ const startServer = async () => {
     const server = http.createServer(app);
     initializeSocket(server);
 
-    server.listen(config.port, () => {
-      logger.info(`Server running on port ${config.port}`, {
+    server.on('error', (err) => {
+      if (err.code === 'EADDRINUSE') {
+        logger.error(`Port ${config.port} is already in use. Stop the other process or change PORT in .env`);
+        process.exit(1);
+      }
+      throw err;
+    });
+
+    server.listen(config.port, config.host, () => {
+      logger.info(`Server running on ${config.publicUrl}`, {
         env: config.env,
-        docs: `http://localhost:${config.port}/api/docs`,
+        host: config.host,
+        port: config.port,
+        docs: `${config.publicUrl}/api/docs`,
       });
     });
 
